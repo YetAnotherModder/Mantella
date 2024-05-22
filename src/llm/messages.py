@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 from openai.types.chat import ChatCompletionMessageParam
+import base64
+import logging
 
 class message(ABC):
     """Base class for messages 
@@ -135,3 +137,44 @@ class user_message(message):
     
     def set_ingame_time(self, time: str, time_group: str):
         self.__time = time, time_group
+
+class image_message(message):
+    """A image message sent to the LLM. Contains the a base64 encode image and accompanying description text.
+    """
+    def __init__(self, image_path: str, text: str = "", is_system_generated_message: bool = False):
+        super().__init__(text, is_system_generated_message)
+        self.image_path = image_path
+        self.text_content = text
+
+    def get_formatted_content(self):
+        return f"[Image: {self.image_path}] {self.text_content}"
+
+    def get_dict_formatted_string(self):
+        return f"Image: {self.image_path}, Content: {self.text_content}"
+
+    @staticmethod
+    def encode_image_to_base64(image_path):
+        try:
+            with open(image_path, "rb") as image_file:
+                return base64.b64encode(image_file.read()).decode('utf-8')
+        except Exception as e:
+            logging.error(f"Error encoding image to base64: {e}")
+            return None
+
+    def get_openai_message(self):
+        # Implement the method to return the appropriate format for OpenAI API
+        return {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": self.text_content
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{self.encode_image_to_base64(self.image_path)}"
+                    }
+                }
+            ]
+        }

@@ -338,6 +338,7 @@ class ChatManager:
                                 except ValueError:
                                     logging.error("Error processing audio array from _mantella_audio_ready.txt")
                                     break
+            time.sleep(0.1)  # Add a short sleep to reduce CPU usage
 
     def convert_game_angle_to_trig_angle(self, game_angle):
         #Used for Mantella Fallout to play directional audio

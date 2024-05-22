@@ -1,5 +1,5 @@
 from copy import deepcopy
-from src.llm.messages import message, system_message, user_message, assistant_message
+from src.llm.messages import message, system_message, user_message, assistant_message, image_message
 from openai.types.chat import ChatCompletionMessageParam
 
 class message_thread():
@@ -47,8 +47,10 @@ class message_thread():
     def get_openai_messages(self) -> list[ChatCompletionMessageParam]:
         return message_thread.transform_to_openai_messages(self.__messages)
 
-    def add_message(self, new_message: user_message | assistant_message):
+    def add_message(self, new_message: user_message | assistant_message | image_message):
+
         self.__messages.append(new_message)
+
 
     def add_non_system_messages(self, new_messages: list[message]):
         """Adds a list of messages to this message_thread. Omits system_messages 
@@ -124,3 +126,28 @@ class message_thread():
                 m.is_multi_npc_message = True
             for m in messages_to_remove:
                 self.__messages.remove(m)
+    
+    def has_image_message(self) -> bool:
+        """Checks if there is any image_message in the messages.
+
+        Returns:
+            bool: True if there is an image_message, False otherwise.
+        """
+        return any(isinstance(message, image_message) for message in self.__messages)
+
+    def replace_image_message(self, new_image_message: image_message):
+        """Replaces the first found image_message in the messages with the provided new_image_message.
+
+        Args:
+            new_image_message (image_message): The new image message to replace the old one.
+        """
+        for idx, msg in enumerate(self.__messages):
+            if isinstance(msg, image_message):
+                self.__messages[idx] = new_image_message
+                # Move the new image message to the end of the list
+                self.__messages.append(self.__messages.pop(idx))
+                break
+            
+    def delete_all_image_messages(self):
+        """Deletes all image_message instances from the messages."""
+        self.__messages = [msg for msg in self.__messages if not isinstance(msg, image_message)]

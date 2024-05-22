@@ -91,6 +91,7 @@ class GameStateManager:
 
         self.write_game_info('_mantella_radiant_dialogue', 'False')
         self.write_game_info('_mantella_audio_ready', 'False')
+        self.write_game_info('_mantella_vision_ready', 'False')
 
         return character_name, character_id, location, in_game_time
     
@@ -371,7 +372,16 @@ class GameStateManager:
 
         return character_info
     
-
+    def check_vision_ready(self):
+        text="False"
+        try:
+            with open(f'{self.game_path}/_mantella_vision_ready.txt', 'r', encoding='utf-8') as f:
+                text = f.readline().strip()
+        except:
+            logging.error("No game image to load. Proceeding with text only.")
+        
+        return text
+        
 
     @utils.time_it
     def load_game_state(self, debug_mode, debug_character_name, character_df, character_name, character_id, location, in_game_time, FO4_Voice_folder_and_models_df):

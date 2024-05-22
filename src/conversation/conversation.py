@@ -4,7 +4,7 @@ import sys
 from src.game_manager import GameStateManager
 from src.remember.remembering import remembering
 from src.output_manager import ChatManager
-from src.llm.messages import assistant_message, system_message, user_message
+from src.llm.messages import assistant_message, system_message, user_message, image_message
 from src.conversation.context import context
 from src.llm.message_thread import message_thread
 from src.conversation.conversation_type import conversation_type, multi_npc, pc_to_npc, radiant
@@ -13,6 +13,7 @@ from src.stt import Transcriber
 from src.tts import Synthesizer
 from src.tts import VoiceModelNotFound
 import src.utils as utils
+from pathlib import Path
 
 class conversation:
     """Controls the flow of a conversation."""
@@ -87,6 +88,19 @@ class conversation:
         last_message = self.__messages.get_last_message()
         if isinstance(last_message, assistant_message) or isinstance(last_message, system_message):
             self.__add_user_message()
+            #Checks if the player enabled vision. If that's the case then
+            if self.__game_manager.check_vision_ready()=="True":
+                image_instance= self.__create_user_image()
+                if self.__messages.has_image_message():
+                    self.__messages.replace_image_message(image_instance)
+                else:
+                    self.__add_user_image(image_instance)
+                self.__game_manager.write_game_info('_mantella_vision_ready', 'False')
+            else:
+                if self.__messages.has_image_message():
+                    self.__messages.delete_all_image_messages()
+                    
+            
         else:
             self.__add_assistant_message()
             # After an assistant_message is generated, check if the current message exchange is about to break the context size of the LLM and if yes, reload the conversation
@@ -146,6 +160,26 @@ class conversation:
         if self.__has_conversation_ended(text):
             new_message.is_system_generated_message = True # Flag message containing goodbye as a system message to exclude from summary
             self.end()
+
+    def __create_user_image(self):
+            # Create an instance of the image_message class
+            config = self.__context.config
+            root_mod_path = Path(config.mod_path)
+            image_path = root_mod_path.parent.parent.parent / "textures" / "SUPScreenshots" / "Mantella" / "Mantella_Vision.jpg"
+            if config.player_name.endswith('s'):
+                suffix="'"
+            else:
+                suffix="'s"
+            image_msg_instance = image_message(str(image_path), f"This image is to give context and is from {config.player_name}{suffix} point of view", True)
+            
+            return image_msg_instance
+
+    def __add_user_image(self, image_msg_instance: image_message):
+            # Create an instance of the image_message class
+            #image_msg_instance = image_message("C:/Users/carev/AppData/Local/ModOrganizer/Fallout 4 - 2022/mods/MantellaMod/textures/SUPScreenshots/Mantella/Mantella_Vision.jpg", "This image is to give context and is from the player's point of view", True)
+            # Access the get_openai_message method to get the message in the desired format
+            self.__messages.add_message(image_msg_instance)
+            #openai_messages.append(openai_img_message)
 
     def __save_conversation(self, is_reload):
         """Saves conversation log and state for each NPC in the conversation"""

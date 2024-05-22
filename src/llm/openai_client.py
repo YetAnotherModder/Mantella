@@ -6,7 +6,7 @@ import time
 import tiktoken
 import requests
 from src.llm.message_thread import message_thread
-from src.llm.messages import message
+from src.llm.messages import message, image_message
 from src.config_loader import ConfigLoader
 
 class openai_client:
@@ -135,7 +135,7 @@ If you are running a model locally, please ensure the service (Kobold / Text gen
         """The secret key
         """
         return self.__api_key
-    
+
     def generate_async_client(self) -> AsyncOpenAI:
         """Generates a new AsyncOpenAI client already setup to be used right away.
         Close the client after usage using 'await client.close()'
@@ -180,6 +180,11 @@ If you are running a model locally, please ensure the service (Kobold / Text gen
         Yields:
             Iterator[AsyncGenerator[str | None, None]]: Yields the return of the 'client.chat.completions.create' method immediately
         """
+
+        openai_messages = messages.get_openai_messages()
+        logging.info(f"Open Ai messages are  {openai_messages} ")
+        #openai_messages.append(openai_img_message)
+
         async_client = self.generate_async_client()
         logging.info('Getting LLM response...')
         max_tokens = self.__max_tokens
@@ -187,7 +192,7 @@ If you are running a model locally, please ensure the service (Kobold / Text gen
             max_tokens = 250
         try:
             async for chunk in await async_client.chat.completions.create(model=self.model_name, 
-                                                                            messages=messages.get_openai_messages(), 
+                                                                            messages=openai_messages, 
                                                                             stream=True,
                                                                             stop=self.__stop,
                                                                             temperature=self.__temperature,
@@ -260,7 +265,7 @@ If you are running a model locally, please ensure the service (Kobold / Text gen
         # note: this calculation is based on GPT-3.5, future models may deviate from this
         num_tokens = 0
         for message in messages_to_check:
-            num_tokens += 4  # every message follows <im_start>{role/name}\n{content}<im_end>\n
+            num_tokens += 4  # every message follows <im_start>{role/name}/n{content}<im_end>/n
             for key, value in message.items():
                 if isinstance(value, str):
                     num_tokens += len(encoding.encode(value))
@@ -283,7 +288,7 @@ If you are running a model locally, please ensure the service (Kobold / Text gen
         else:
             text = message_to_measure
 
-        num_tokens = 4 # every message follows <im_start>{role/name}\n{content}<im_end>\n
+        num_tokens = 4 # every message follows <im_start>{role/name}/n{content}<im_end>/n
         num_tokens += len(text)
         if isinstance(message_to_measure, message) and message_to_measure.get_openai_message().__contains__("name"):# if there's a name, the role is omitted
             num_tokens += -1# role is always required and always 1 token
